@@ -1,0 +1,38 @@
+name: AWS CDK CD
+
+on:
+  release:
+    types:
+      - created
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  STAGE: dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/install-deps
+      - name: Setup AWS
+        uses: Fooji/create-aws-profile-action@v2
+        with:
+          profile: default
+          region: ${{ env.AWS_REGION }}
+          key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Deploy dev
+        if: github.event.release.prerelease == true
+        env:
+          STAGE: dev
+        run: cdk deploy --all --require-approval "never"
+
+      - name: Deploy prod
+        if: github.event.release.prerelease != true
+        env:
+          STAGE: prod
+        run: cdk deploy --all --require-approval "never"
